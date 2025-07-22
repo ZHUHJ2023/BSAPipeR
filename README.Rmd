@@ -1,0 +1,170 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# BSAPipeR
+
+[![R-CMD-check](https://github.com/yourusername/BSAPipeR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/yourusername/BSAPipeR/actions/workflows/R-CMD-check.yaml)
+[![License: GPL-3](https://img.shields.io/badge/License-GPL3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+BSAPipeR is an integrated R package for Bulked Segregant Analysis (BSA) that provides a complete workflow from raw sequencing data to candidate variant identification.
+
+## Installation
+
+Install the development version from GitHub:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("yourusername/BSAPipeR")
+```
+
+## Complete BSA Pipeline
+
+The `BSAPipeR()` function provides a one-step solution for BSA analysis:
+
+```{r example, eval=FALSE}
+# Load the BSAPipeR package
+library(BSAPipeR)
+
+# First configure software paths
+set_software_paths(
+  bwa = "/path/to/bwa",
+  fastp = "/path/to/fastp",
+  samtools = "/path/to/samtools",
+  picard = "/path/to/java -XX:ParallelGCThreads=8 -Xmx30g -jar /path/to/picard.jar",
+  bcftools = "/path/to/bcftools",
+  gatk = "/path/to/java -XX:ParallelGCThreads=8 -Xmx30g -jar /path/to/gatk.jar",
+  snpEff = "/path/to/snpEff", #SnpEff directory
+  java = "/path/to/java",
+  pandepth = "/path/to/pandepth"
+)
+
+# View the current configured software path
+get_software_paths()
+
+# Run complete pipeline
+BSAPipeR(
+  ref = "/path/to/reference.fa",
+  refbwa = "/path/to/bwa_index_prefix",
+  outdir = "/path/to/output_directory",
+  sample_mut = "mutant",
+  sample_wt = "wildtype",
+  GFF3 = "/path/to/annotation.gff3",
+  mutfq1 = "mutant_R1.fq.gz",
+  mutfq2 = "mutant_R2.fq.gz",
+  wtfq1 = "wildtype_R1.fq.gz",
+  wtfq2 = "wildtype_R2.fq.gz",
+  depthFT = "True", #是否指定测序深度
+  mdepth = 10, # 指定测序深度为10x
+  GT_mut = "aa",
+  mindp = 4 # 可根据需要调整最小深度阈值
+)
+```
+
+## Pipeline Workflow
+
+The package implements a comprehensive BSA analysis workflow:
+
+1. **Data Preparation**
+   - Creates symbolic links to input FASTQ files
+   - Organizes raw data in `rawdata/` directory
+
+2. **Variant Calling Pipeline**
+   - Quality control (fastp)
+   - Read alignment (bwa)
+   - Duplicate marking (picard)
+   - Variant calling (GATK/bcftools)
+   - Base quality recalibration (GATK)
+   - Variant filtering
+   - Organized output in `Processing/` directory
+
+3. **Variant Annotation**
+   - Functional annotation with snpEff
+
+4. **Result Generation**
+   - Candidate variant identification
+   - Summary statistics
+   - Visualization plots
+   - Organized output in `Results/` directory
+
+## Key Parameters
+
+| Parameter    | Description |
+|--------------|-------------|
+| `ref`        | Reference genome FASTA file |
+| `refbwa`     | BWA index prefix (will create if doesn't exist) |
+| `outdir`     | Output directory (will create subdirectories) |
+| `sample_mut` | Mutant pool sample name |
+| `sample_wt`  | Wild-type pool sample name |
+| `GFF3`       | Genome annotation file |
+| `depthFT`    | Enable depth filtering ("True"/"False") |
+| `mdepth`     | Minimum depth threshold when depthFT="True" |
+| `GT_mut`     | Expected mutant genotype ("aa" for homozygous) |
+| `mindp`      | Minimum depth for variant filtering (default=4) |
+
+## Output Structure
+
+```
+outdir/
+├── rawdata/                  # Symbolic links to original input FASTQ files
+│   ├── sample_mut_R1.fq.gz   # Mutant sample read 1
+│   ├── sample_mut_R2.fq.gz   # Mutant sample read 2
+│   ├── sample_wt_R1.fq.gz    # Wild-type sample read 1
+│   └── sample_wt_R2.fq.gz    # Wild-type sample read 2
+│
+├── Processing/               # Intermediate processing files
+│   ├── 00_fastp/             # Quality control reports and cleaned reads
+│   ├── 01_bwa/               # Alignment files (BAM/SAM)
+│   ├── 02_vcf/               # Initial variant calls (raw VCFs)
+│   ├── 03_gatk/              # GATK processed files (BQSR, GVCFs)
+│   ├── 04_finalVCF/          # Final filtered variant calls
+│   ├── 05_snpIndel/          # Separated SNP and indel VCFs
+│   ├── 06_SnpEff/            # Annotated variants with effect predictions
+│   └── logs/                 # Detailed processing logs
+│
+└── Results/                  # Final analysis results
+    ├── 01_raw_vcf/           # Raw variant call files
+    │   ├── *.snp.VQSR.snpEff.vcf.gz    # Annotated SNP VCFs
+    │   ├── *.indel.VQSR.snpEff.vcf.gz  # Annotated indel VCFs
+    │   ├── *.snpEff.html     # Variant annotation reports
+    │   └── *.snpEff.xlsx     # Extracted annotation tables
+    │
+    ├── 02_BSA_results/       # BSA-specific analysis outputs
+    │   ├── *.CandidateGene.txt       # Candidate variants
+    │   └── *.SNP_index.pdf          # Visualization of SNP index
+    │
+    └── 03_ML_results/        # Machine learning outputs
+        ├── Predict_lightgbm.xlsx  # Full prediction results
+        └── Predict_lightgbm.pdf   # Prediction visualization
+```
+
+## Getting Help
+
+For documentation:
+```r
+?BSAPipeR
+?set_software_paths
+```
+
+To report issues:  
+https://github.com/yourusername/BSAPipeR/issues
+
+## Citation
+
+Please cite this work as:  
+[Your Name]. (Year). BSAPipeR: An integrated BSA analysis pipeline. [URL]
+
+## License
+
+GPL-3 © [Your Name]
