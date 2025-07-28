@@ -11,9 +11,9 @@ BSAPipeR is an integrated R package for Bulked Segregant Analysis (BSA)
 that provides a complete workflow from raw sequencing data to candidate
 variant identification.
 
-``` markdown
+
 ![BSAPipeR](man/figures/README-BSAPipeR.jpg){width=100%}
-```
+
 
 ## Installation
 
