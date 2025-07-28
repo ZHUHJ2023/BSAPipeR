@@ -429,144 +429,154 @@ get_results_ck <- function(vcffile, outdir, sample_wt, sample_mut, GT_mut, mindp
 #' get_results_ml("input.vcf", "output_dir", "WT_sample", "MUT_sample", "aa")
 #' }
 get_results_ml <- function(vcffile, outdir, sample_wt, sample_mut, GT_mut,mindp=4, model_path = NULL) {
-    # Parameter validation
-    if (missing(vcffile) || !file.exists(vcffile)) {
-      stop("VCF file is required and must exist")
+  # Parameter validation
+  if (missing(vcffile) || !file.exists(vcffile)) {
+    stop("VCF file is required and must exist")
+  }
+
+  if (missing(outdir)) {
+    stop("Output directory is required")
+  }
+
+  if (missing(sample_wt) || missing(sample_mut)) {
+    stop("Sample names for wild-type and mutant are required")
+  }
+
+  if (GT_mut != "aa") {
+    stop("ML model currently only supports 'aa' mutation type")
+  }
+
+  # Create output directory if it doesn't exist
+  if (!dir.exists(outdir)) {
+    dir.create(outdir, recursive = TRUE)
+  }
+
+  # Check for required packages
+  required_pkgs <- c("vcfR", "data.table", "dplyr", "tidymodels", "openxlsx",
+                     "caret", "class", "ggplot2", "tidymodels")
+  missing_pkgs <- setdiff(required_pkgs, rownames(installed.packages()))
+
+  if (length(missing_pkgs) > 0) {
+    stop(paste("The following required packages are missing:",
+               paste(missing_pkgs, collapse = ", ")))
+  }
+
+  # Read and process VCF file
+  df <- get_vcf_features(vcffile = vcffile,
+                         sample_wt = sample_wt,
+                         sample_mut = sample_mut) %>%
+    mutate(Sample = sample_mut) %>%
+    mutate(
+      DP_WT_norm = DP_WT / mean(DP_WT, na.rm = TRUE),
+      DP_MUT_norm = DP_MUT / mean(DP_MUT, na.rm = TRUE) ) %>%
+    filter(DP_WT >= mindp & DP_MUT >= mindp) #修改为使用测序深度大于等于4的位点
+  df$ID <- paste0(df$CHROM, "_", df$POS, "_", df$Sample)
+  df <- df %>%
+    mutate(
+      DP_WT_norm = DP_WT / mean(DP_WT, na.rm = TRUE),
+      DP_MUT_norm = DP_MUT / mean(DP_MUT, na.rm = TRUE)
+    )
+  df$detaAF <- df$AF_MUT - df$AF_WT
+  df$FILTER <- ifelse(df$FILTER == "PASS", 1, 0)
+  df$GT_MUT <- gsub("/","|",df$GT_MUT)
+  df$GT_WT <- gsub("/","|",df$GT_WT)
+  gxdata <- df
+  if ( "mutation_effect_level" %in% colnames(gxdata) ) {
+    gxdata$mutation_effect_level <- factor(gxdata$mutation_effect_level,levels=c("HIGH","MODERATE","MODIFIER","LOW"))
+  }
+  gxdata$GT_MUT <- factor(gxdata$GT_MUT, levels = c("1|1", "0|1", "0|0"))
+  gxdata$GT_WT <- factor(gxdata$GT_WT, levels = c("0|0", "0|1", "1|1"))
+  gxdata$Pr_change_is <- ifelse(gxdata$Pr_change_is %in% "1", "TRUE", "FALSE")
+  gxdata$Pr_change_is <- factor(gxdata$Pr_change_is,levels=c("TRUE","FALSE"))
+  gxdata$EMS_is <- ifelse(gxdata$EMS_is %in% "1", "TRUE", "FALSE")
+  gxdata$EMS_is <- factor(gxdata$EMS_is,levels=c("TRUE","FALSE"))
+  gxdata <- add_allele_features(gxdata) %>%
+    dplyr::select(-c(MUT_weak_alt, MUT_weak_ref,WT_weak_alt, WT_weak_ref,MUT_strong_ref,WT_strong_alt))
+  # Load model
+  if (is.null(model_path)) {
+    model_file <- system.file("extdata", "final.RandomForest_fit.rds",
+                              package = "BSAPipeR")
+    if (!file.exists(model_file)) {
+      stop("Built-in model file not found in package")
     }
+  } else if (!file.exists(model_path)) {
+    stop("Specified model file does not exist")
+  } else {
+    model_file <- model_path
+  }
+  RandomForest_fit <- readRDS(model_file) %>% workflowsets::extract_workflow()
+  pred_RandomForest <- gxdata %>%
+    bind_cols(predict(RandomForest_fit, gxdata, type = "prob")) %>%
+    bind_cols(predict(RandomForest_fit, gxdata, type = "class"))
+  pred_RandomForest$cutoff <- max(pred_RandomForest$.pred_TRUE) - 0.1
+  pred_RandomForest$.pred_class_new <- pred_RandomForest$.pred_TRUE >= pred_RandomForest$cutoff
+  f_RandomForest <- dplyr::filter(pred_RandomForest,.pred_class_new==TRUE)
+  #06.保存结果
 
-    if (missing(outdir)) {
-      stop("Output directory is required")
-    }
+  # library(openxlsx)
+  ## Create a new workbook
+  wb <- openxlsx::createWorkbook()
+  openxlsx::addWorksheet(wb, sheetName = "00_raw_dataframe", tabColour = "white")
+  openxlsx::addWorksheet(wb, sheetName = "01_Pred_RandomForest", tabColour = "grey")
+  openxlsx::addWorksheet(wb, sheetName = "02_Pred_RandomForest_TRUE", tabColour = "#A593E0")
 
-    if (missing(sample_wt) || missing(sample_mut)) {
-      stop("Sample names for wild-type and mutant are required")
-    }
+  openxlsx::writeData(wb, sheet = 1, gxdata)
+  openxlsx::writeData(wb, sheet = 2, pred_RandomForest)
+  openxlsx::writeData(wb, sheet = 3, f_RandomForest)
+  outfile <- paste0(outdir, "/", gsub(".VQSR.snpEff.vcf.gz",".Predict_RandomForest.xlsx",basename(vcffile)))
+  openxlsx::saveWorkbook(wb, outfile, overwrite = TRUE)
 
-    if (GT_mut != "aa") {
-      stop("ML model currently only supports 'aa' mutation type")
-    }
+  # Generate visualization
+  Pred_Final <- openxlsx::read.xlsx(outfile, sheet = "01_Pred_RandomForest")
+  Pred_Final$CHROM <-  gsub("chr","",Pred_Final$CHROM)
+  Pred_Final$POS <- as.numeric(Pred_Final$POS)
+  Pred_Final$CHROM <-  factor(Pred_Final$CHROM,levels = seq(1:12))
+  Pred_Final$level <- 5 - as.numeric(Pred_Final$mutation_effect_level)
+  # Pred_Final$level <- ifelse(Pred_Final$mutation_effect_level == "HIGH",4,ifelse(Pred_Final$mutation_effect_level == "MODERATE",3,ifelse(Pred_Final$mutation_effect_level == "MODIFIER",2,1)))
 
-    # Create output directory if it doesn't exist
-    if (!dir.exists(outdir)) {
-      dir.create(outdir, recursive = TRUE)
-    }
+  p4 <- ggplot(Pred_Final, aes(x = POS/1e6, y = .pred_TRUE, color = level)) +
+    #加上阈值虚线，阈值为max(Pred_Final$.pred_TRUE) - 0.1
+    geom_hline(yintercept = max(Pred_Final$.pred_TRUE) - 0.1, linetype = "dashed", color = "grey", size = 0.2) +
+    geom_point(size=0.5) +
+    facet_grid(~CHROM, scales = "free_x", space = "free_x", switch = "x") +
+    scale_color_gradientn(colours = c( "#f9d423","#f83600" , "#020f75")) +
+    # scale_fill_gradientn(colours = c( '#007adf','#fbed96','#ff5858')) +
+    labs(title = sheetname, x = "", y = "pred_TRUE") +
+    theme_bw() +
+    theme(
+      text = element_text(size = 8, color = "black"),
+      strip.background = element_blank(),
+      strip.placement = "outside",
+      axis.line.x = element_line(linetype = 1, color = "black", size = 0.5),
+      axis.line.y = element_line(linetype = 1, color = "black", size = 0.5),
+      panel.spacing = unit(0, "cm"),  # 设置子图之间的间距为0
+      axis.title.y = element_text(size = 8),
+      # axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.x = element_blank(),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 8),
+      plot.title = element_text(size = 8),
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 8),
+      legend.position = "right",
+      legend.key.size = unit(0.15, 'cm'),
+      panel.border = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.ticks.y = element_line(color = "black", size = 0.5),
+      axis.ticks.length = unit(0.2, "cm"),
+      # axis.ticks.x = element_line(color = "black", size = 0.5),
+      axis.ticks.x = element_blank(),
+      axis.text.y = element_text(margin = margin(r = 5)),
+      plot.margin = margin(t = 0.1, r = 0.1, b = 0.1, l = 0.1, unit = "cm")
+    )
 
-    # Check for required packages
-    required_pkgs <- c("vcfR", "data.table", "dplyr", "tidymodels", "openxlsx",
-                       "caret", "class", "ggplot2", "tidymodels")
-    missing_pkgs <- setdiff(required_pkgs, rownames(installed.packages()))
+  pdf_file <- gsub(".xlsx", ".pdf", outfile)
+  grDevices::pdf(file = pdf_file, width = 8, height = 3)
+  print(p4)
+  grDevices::dev.off()
 
-    if (length(missing_pkgs) > 0) {
-      stop(paste("The following required packages are missing:",
-                 paste(missing_pkgs, collapse = ", ")))
-    }
-
-    # Read and process VCF file
-    df <- get_vcf_features(vcffile = vcffile,
-                           sample_wt = sample_wt,
-                           sample_mut = sample_mut) %>%
-      mutate(Sample = sample_mut) %>%
-      mutate(
-        DP_WT_norm = DP_WT / mean(DP_WT, na.rm = TRUE),
-        DP_MUT_norm = DP_MUT / mean(DP_MUT, na.rm = TRUE) ) %>%
-      filter(DP_WT >= mindp & DP_MUT >= mindp) #修改为使用测序深度大于等于4的位点
-    df$ID <- paste0(df$CHROM, "_", df$POS, "_", df$Sample)
-    df <- df %>%
-      mutate(
-        DP_WT_norm = DP_WT / mean(DP_WT, na.rm = TRUE),
-        DP_MUT_norm = DP_MUT / mean(DP_MUT, na.rm = TRUE)
-      )
-    df$detaAF <- df$AF_MUT - df$AF_WT
-    df$FILTER <- ifelse(df$FILTER == "PASS", 1, 0)
-    df$GT_MUT <- gsub("/","|",df$GT_MUT)
-    df$GT_WT <- gsub("/","|",df$GT_WT)
-    gxdata <- df
-    if ( "mutation_effect_level" %in% colnames(gxdata) ) {
-      gxdata$mutation_effect_level <- factor(gxdata$mutation_effect_level,levels=c("HIGH","MODERATE","MODIFIER","LOW"))
-    }
-    gxdata$GT_MUT <- factor(gxdata$GT_MUT, levels = c("1|1", "0|1", "0|0"))
-    gxdata$GT_WT <- factor(gxdata$GT_WT, levels = c("0|0", "0|1", "1|1"))
-    gxdata$Pr_change_is <- ifelse(gxdata$Pr_change_is %in% "1", "TRUE", "FALSE")
-    gxdata$Pr_change_is <- factor(gxdata$Pr_change_is,levels=c("TRUE","FALSE"))
-    gxdata$EMS_is <- ifelse(gxdata$EMS_is %in% "1", "TRUE", "FALSE")
-    gxdata$EMS_is <- factor(gxdata$EMS_is,levels=c("TRUE","FALSE"))
-    # Load model
-    if (is.null(model_path)) {
-      model_file <- system.file("extdata", "final.lightgbm_fit.rds",
-                                package = "BSAPipeR")
-      if (!file.exists(model_file)) {
-        stop("Built-in model file not found in package")
-      }
-    } else if (!file.exists(model_path)) {
-      stop("Specified model file does not exist")
-    } else {
-      model_file <- model_path
-    }
-    lightgbm_fit <- readRDS(model_file) %>% workflowsets::extract_workflow()
-    pred_lightgbm <- gxdata %>%
-      bind_cols(predict(lightgbm_fit, gxdata, type = "prob")) %>%
-      bind_cols(predict(lightgbm_fit, gxdata, type = "class"))
-    f_lightgbm <- dplyr::filter(pred_lightgbm,.pred_class==TRUE)
-    #06.保存结果
-
-    # library(openxlsx)
-    ## Create a new workbook
-    wb <- openxlsx::createWorkbook()
-    openxlsx::addWorksheet(wb, sheetName = "00_raw_dataframe", tabColour = "white")
-    openxlsx::addWorksheet(wb, sheetName = "01_Pred_LightGBM", tabColour = "grey")
-    openxlsx::addWorksheet(wb, sheetName = "02_Pred_LightGBM_TRUE", tabColour = "#A593E0")
-
-    openxlsx::writeData(wb, sheet = 1, gxdata)
-    openxlsx::writeData(wb, sheet = 2, pred_lightgbm)
-    openxlsx::writeData(wb, sheet = 3, f_lightgbm)
-    outfile <- paste0(outdir, "/", gsub(".VQSR.snpEff.vcf.gz",".Predict_lightgbm.xlsx",basename(vcffile)))
-    openxlsx::saveWorkbook(wb, outfile, overwrite = TRUE)
-
-    # Generate visualization
-    Pred_Final <- openxlsx::read.xlsx(outfile, sheet = "01_Pred_LightGBM")
-    Pred_Final$CHROM <-  gsub("chr","",Pred_Final$CHROM)
-    Pred_Final$POS <- as.numeric(Pred_Final$POS)
-    Pred_Final$CHROM <-  factor(Pred_Final$CHROM,levels = seq(1:12))
-    Pred_Final$level <- ifelse(Pred_Final$mutation_effect_level == "HIGH",4,ifelse(Pred_Final$mutation_effect_level == "MODERATE",3,ifelse(Pred_Final$mutation_effect_level == "MODIFIER",2,1)))
-
-    p4 <- ggplot2::ggplot(Pred_Final, ggplot2::aes(x = .data$POS/1e6, y = .data$.pred_TRUE,
-                                                   color = .data$level)) +
-      ggplot2::geom_point(size = 0.5) +
-      ggplot2::facet_grid(~.data$CHROM, scales = "free_x", space = "free_x", switch = "x") +
-      ggplot2::scale_color_gradientn(colours = c("#f9d423", "#f83600", "#020f75")) +
-      ggplot2::labs(title = "", x = "", y = "LightGBM") +
-      ggplot2::theme_bw() +
-      ggplot2::theme(
-        text = ggplot2::element_text(size = 8, color = "black"),
-        strip.background = ggplot2::element_blank(),
-        strip.placement = "outside",
-        axis.line.x = ggplot2::element_line(linetype = 1, color = "black", linewidth = 0.5),
-        axis.line.y = ggplot2::element_line(linetype = 1, color = "black", linewidth = 0.5),
-        panel.spacing = ggplot2::unit(0, "cm"),
-        axis.title.y = ggplot2::element_text(size = 8),
-        axis.text.x = ggplot2::element_blank(),
-        axis.text = ggplot2::element_text(size = 8),
-        axis.title = ggplot2::element_text(size = 8),
-        plot.title = ggplot2::element_text(size = 8),
-        legend.text = ggplot2::element_text(size = 8),
-        legend.title = ggplot2::element_text(size = 8),
-        legend.position = "right",
-        panel.border = ggplot2::element_blank(),
-        panel.grid.major = ggplot2::element_blank(),
-        panel.grid.minor = ggplot2::element_blank(),
-        axis.ticks.y = ggplot2::element_line(color = "black", linewidth = 0.5),
-        axis.ticks.length = ggplot2::unit(0.2, "cm"),
-        axis.ticks.x = ggplot2::element_blank(),
-        axis.text.y = ggplot2::element_text(margin = ggplot2::margin(r = 5)),
-        plot.margin = ggplot2::margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm")
-      )
-
-    pdf_file <- gsub(".xlsx", ".pdf", outfile)
-    grDevices::pdf(file = pdf_file, width = 8, height = 3)
-    print(p4)
-    grDevices::dev.off()
-
-    invisible(NULL)
+  invisible(NULL)
 }
 
 #' Extract and Annotate Variant Features from VCF File
@@ -772,239 +782,71 @@ get_vcf_features <- function(vcffile, sample_wt, sample_mut) {
 
 }
 
+#' Extract Allele Balance Features from AD String
+#'
+#' 从AD格式字符串（"ref_depth,alt_depth"）中提取四个等位基因平衡特征：
+#' 强变异优势、强参考优势、弱变异优势、弱参考优势。
+#'
+#' @param ad_str 字符串，AD格式的等位基因深度（"ref_depth,alt_depth"）
+#' @param b 整数，定义"强优势"的阈值倍数（默认=9）
+#'
+#' @return 返回长度为4的整数向量，包含以下特征：
+#' \itemize{
+#'   \item \strong{strong_alt}: 变异等位基因深度 ≥ b * 参考等位基因深度
+#'   \item \strong{strong_ref}: 参考等位基因深度 ≥ b * 变异等位基因深度
+#'   \item \weak_alt}: 变异等位基因深度 > 参考等位基因深度 且 < b倍参考深度
+#'   \item \weak_ref}: 参考等位基因深度 > 变异等位基因深度 且 < b倍变异深度
+#' }
+#'
+#' @examples
+#' extract_sample_features("10,90")  # c(1, 0, 0, 0)
+#' extract_sample_features("50,5")   # c(0, 1, 0, 0)
+#' extract_sample_features("10,15")  # c(0, 0, 1, 0)
+#' extract_sample_features("15,10")  # c(0, 0, 0, 1)
+#' extract_sample_features("10,10")  # c(0, 0, 0, 0)
+extract_sample_features <- function(ad_str, b = 9) {
+  depths <- as.numeric(strsplit(ad_str, ",")[[1]])
+  ref_depth <- depths[1]
+  alt_depth <- depths[2]
 
+  strong_alt <- as.integer(alt_depth >= b * ref_depth)
+  strong_ref <- as.integer(ref_depth >= b * alt_depth)
+  weak_alt <- as.integer(alt_depth > ref_depth & alt_depth < b * ref_depth)
+  weak_ref <- as.integer(ref_depth > alt_depth & ref_depth < b * alt_depth)
 
-# 使用旧机器学习模型
-# get_results_ml <- function(vcffile, outdir, sample_wt, sample_mut, GT_mut,mindp=4, model_path = NULL) {
-#   # Parameter validation
-#   if (missing(vcffile) || !file.exists(vcffile)) {
-#     stop("VCF file is required and must exist")
-#   }
-#
-#   if (missing(outdir)) {
-#     stop("Output directory is required")
-#   }
-#
-#   if (missing(sample_wt) || missing(sample_mut)) {
-#     stop("Sample names for wild-type and mutant are required")
-#   }
-#
-#   if (GT_mut != "aa") {
-#     stop("ML model currently only supports 'aa' mutation type")
-#   }
-#
-#   # Create output directory if it doesn't exist
-#   if (!dir.exists(outdir)) {
-#     dir.create(outdir, recursive = TRUE)
-#   }
-#
-#   # Check for required packages
-#   required_pkgs <- c("vcfR", "data.table", "dplyr", "tidymodels", "openxlsx",
-#                      "caret", "class", "ggplot2", "tidymodels")
-#   missing_pkgs <- setdiff(required_pkgs, rownames(installed.packages()))
-#
-#   if (length(missing_pkgs) > 0) {
-#     stop(paste("The following required packages are missing:",
-#                paste(missing_pkgs, collapse = ", ")))
-#   }
-#
-#   # Read and process VCF file
-#   vcf <- vcfR::read.vcfR(vcffile)
-#   df <- as.data.frame(vcf@fix)
-#   df$ID <- paste(df$CHROM, df$POS, sep = "_")
-#   AD <- vcfR::extract.gt(vcf, "AD")
-#   GT <- vcfR::extract.gt(vcf, "GT")
-#
-#   # Extract INFO fields
-#   extract_info_field <- function(info, field_num) {
-#     sapply(strsplit(info, "|", fixed = TRUE), function(x) {
-#       if (length(x) >= field_num) x[field_num] else NA_character_
-#     })
-#   }
-#
-#   df <- df %>%
-#     dplyr::mutate(
-#       mutation_effect = extract_info_field(.data$INFO, 2),
-#       mutation_effect_level = extract_info_field(.data$INFO, 3),
-#       Gene = extract_info_field(.data$INFO, 4),
-#       CDS_change = extract_info_field(.data$INFO, 10),
-#       protein_change = extract_info_field(.data$INFO, 11)
-#     )
-#
-#   # Select relevant columns
-#   newdf <- df %>%
-#     dplyr::select(CHROM, POS, ID, REF, ALT, mutation_effect,
-#                   mutation_effect_level, CDS_change, protein_change, Gene)
-#
-#   # Process genotype data
-#   if (ncol(GT) == 2) {
-#     # Add GT and AD data
-#     newdf <- cbind(
-#       newdf,
-#       GT = GT,
-#       AD = AD
-#     )
-#     colnames(newdf)[(ncol(newdf)-3):ncol(newdf)] <- c(
-#       paste0("GT_", colnames(GT)),
-#       paste0("AD_", colnames(AD))
-#     )
-#
-#     # Filter out variants with multiple ALT alleles
-#     multi_alt <- grepl(",", newdf$ALT)
-#     if (any(multi_alt)) {
-#       newdf <- newdf[!multi_alt, ]
-#       AD <- AD[!multi_alt, ]
-#       GT <- GT[!multi_alt, ]
-#     }
-#
-#     # Calculate SNP indices
-#     calc_snp_index <- function(ad_col) {
-#       dp <- data.table::fread(text = ad_col, header = FALSE, sep = ",",
-#                               data.table = FALSE, fill = TRUE)
-#       dp <- dp[, 1:2]  # Ensure only two columns
-#       colnames(dp) <- c("ref_Depth", "alt_Depth")
-#       dp$alt_Depth / (dp$ref_Depth + dp$alt_Depth)
-#     }
-#
-#     newdf <- newdf %>%
-#       dplyr::mutate(
-#         SNP_index_WT = calc_snp_index(.data[[paste0("AD_", sample_wt)]]),
-#         SNP_index_MUT = calc_snp_index(.data[[paste0("AD_", sample_mut)]])
-#       )
-#
-#     # Rename columns
-#     colnames(newdf) <- gsub(sample_wt, "WT", colnames(newdf))
-#     colnames(newdf) <- gsub(sample_mut, "MUT", colnames(newdf))
-#   }
-#
-#   # Load model
-#   if (is.null(model_path)) {
-#     model_file <- system.file("extdata", "final.lightgbm_fit.rds",
-#                               package = "BSAliulab")
-#     if (!file.exists(model_file)) {
-#       stop("Built-in model file not found in package")
-#     }
-#   } else if (!file.exists(model_path)) {
-#     stop("Specified model file does not exist")
-#   } else {
-#     model_file <- model_path
-#   }
-#
-#   lightgbm_fit <- readRDS(model_file) %>% workflowsets::extract_workflow()
-#
-#   # Prepare data for prediction
-#   df <- newdf
-#
-#   ad_flt <- df[,c("AD_WT","AD_MUT")]
-#   ad_flt[ad_flt == "."] = "1,0"
-#   df$ED4 <- apply(ad_flt, 1, function(x){
-#     count <- as.numeric(unlist(strsplit(x, ",",fixed = TRUE,useBytes = TRUE)))
-#     depth1 <- count[1] + count[2]
-#     depth2 <- count[3] + count[4]
-#
-#     ED <- sqrt((count[3] / depth2 - count[1] / depth1)^2 +
-#                  (count[4] / depth2- count[2] /depth1)^2)
-#     return(ED^4)
-#
-#   })
-#   df$DP_WT <- apply(ad_flt, 1, function(x){
-#     count <- as.numeric(unlist(strsplit(x, ",",fixed = TRUE,useBytes = TRUE)))
-#     depth1 <- count[1] + count[2]
-#     return(depth1)
-#   })
-#   df$DP_MUT <- apply(ad_flt, 1, function(x){
-#     count <- as.numeric(unlist(strsplit(x, ",",fixed = TRUE,useBytes = TRUE)))
-#     depth2 <- count[3] + count[4]
-#     return(depth2)
-#   })
-#   df <- filter(df, DP_WT >= 4 & DP_MUT >= 4)
-#   df <- na.omit(df)
-#   df$ProteinChange <- ifelse(df$protein_change %in% "", "FALSE", "TRUE")
-#   df$GT_MUT <- gsub("/","|",df$GT_MUT)
-#   df$GT_WT <- gsub("/","|",df$GT_WT)
-#   gxdata <- df
-#   gxdata$mutation_effect_level <- factor(gxdata$mutation_effect_level,levels=c("HIGH","MODERATE","MODIFIER","LOW"))
-#   gxdata$gt_mut <- gxdata$GT_MUT
-#   gxdata$gt_mut <- gsub("0|0","AA",gxdata$gt_mut,fixed=TRUE)
-#   gxdata$gt_mut <- gsub("1|1","aa",gxdata$gt_mut,fixed=TRUE)
-#   gxdata$gt_mut <- gsub("0|1","Aa",gxdata$gt_mut,fixed=TRUE)
-#   gxdata$gt_mut <- gsub("1|0","Aa",gxdata$gt_mut,fixed=TRUE)
-#   gxdata$gt_wt <- gxdata$GT_WT
-#   gxdata$gt_wt <- gsub("0|0","AA",gxdata$gt_wt,fixed=TRUE)
-#   gxdata$gt_wt <- gsub("1|1","aa",gxdata$gt_wt,fixed=TRUE)
-#   gxdata$gt_wt <- gsub("0|1","Aa",gxdata$gt_wt,fixed=TRUE)
-#   gxdata$gt_wt <- gsub("1|0","Aa",gxdata$gt_wt,fixed=TRUE)
-#   gxdata$GT_MUT_WT <- paste(gxdata$gt_mut,gxdata$gt_wt,sep="|")
-#   # "AA|aa" "aa|aa" "Aa|aa" "Aa|AA" "aa|AA" "AA|AA" "AA|Aa" "Aa|Aa" "aa|Aa"
-#   gxdata$GT_MUT_WT <- factor(gxdata$GT_MUT_WT,levels=c("aa|AA","aa|Aa","Aa|AA","Aa|Aa","Aa|aa","AA|aa","AA|Aa","aa|aa","AA|AA"))
-#   gxdata$ProteinChange <- factor(gxdata$ProteinChange,levels=c("TRUE","FALSE"))
-#
-#   df <- gxdata
-#   # Make predictions
-#   pred_lightgbm <- df %>%
-#     dplyr::bind_cols(
-#       stats::predict(lightgbm_fit, ., type = "prob"),
-#       stats::predict(lightgbm_fit, ., type = "class")
-#     )
-#
-#   f_lightgbm <- pred_lightgbm %>%
-#     dplyr::filter(.data$.pred_class == TRUE)
-#
-#   # Save results to Excel
-#   wb <- openxlsx::createWorkbook()
-#   openxlsx::addWorksheet(wb, sheetName = "00_raw_dataframe", tabColour = "white")
-#   openxlsx::addWorksheet(wb, sheetName = "01_Pred_LightGBM", tabColour = "grey")
-#   openxlsx::addWorksheet(wb, sheetName = "02_Pred_LightGBM_TRUE", tabColour = "#A593E0")
-#
-#   openxlsx::writeData(wb, sheet = 1, df)
-#   openxlsx::writeData(wb, sheet = 2, pred_lightgbm)
-#   openxlsx::writeData(wb, sheet = 3, f_lightgbm)
-#   outfile <- paste0(outdir, "/", gsub(".VQSR.snpEff.vcf.gz",".Predict_lightgbm.xlsx",basename(vcffile)))
-#   openxlsx::saveWorkbook(wb, outfile, overwrite = TRUE)
-#
-#   # Generate visualization
-#   Pred_Final <- openxlsx::read.xlsx(outfile, sheet = "01_Pred_LightGBM")
-#   Pred_Final$CHROM <-  gsub("chr","",Pred_Final$CHROM)
-#   Pred_Final$POS <- as.numeric(Pred_Final$POS)
-#   Pred_Final$CHROM <-  factor(Pred_Final$CHROM,levels = seq(1:12))
-#   Pred_Final$level <- ifelse(Pred_Final$mutation_effect_level == "HIGH",4,ifelse(Pred_Final$mutation_effect_level == "MODERATE",3,ifelse(Pred_Final$mutation_effect_level == "MODIFIER",2,1)))
-#
-#   p4 <- ggplot2::ggplot(Pred_Final, ggplot2::aes(x = .data$POS/1e6, y = .data$.pred_TRUE,
-#                                                  color = .data$level)) +
-#     ggplot2::geom_point(size = 0.5) +
-#     ggplot2::facet_grid(~.data$CHROM, scales = "free_x", space = "free_x", switch = "x") +
-#     ggplot2::scale_color_gradientn(colours = c("#f9d423", "#f83600", "#020f75")) +
-#     ggplot2::labs(title = "", x = "", y = "LightGBM") +
-#     ggplot2::theme_bw() +
-#     ggplot2::theme(
-#       text = ggplot2::element_text(size = 8, color = "black"),
-#       strip.background = ggplot2::element_blank(),
-#       strip.placement = "outside",
-#       axis.line.x = ggplot2::element_line(linetype = 1, color = "black", linewidth = 0.5),
-#       axis.line.y = ggplot2::element_line(linetype = 1, color = "black", linewidth = 0.5),
-#       panel.spacing = ggplot2::unit(0, "cm"),
-#       axis.title.y = ggplot2::element_text(size = 8),
-#       axis.text.x = ggplot2::element_blank(),
-#       axis.text = ggplot2::element_text(size = 8),
-#       axis.title = ggplot2::element_text(size = 8),
-#       plot.title = ggplot2::element_text(size = 8),
-#       legend.text = ggplot2::element_text(size = 8),
-#       legend.title = ggplot2::element_text(size = 8),
-#       legend.position = "none",
-#       panel.border = ggplot2::element_blank(),
-#       panel.grid.major = ggplot2::element_blank(),
-#       panel.grid.minor = ggplot2::element_blank(),
-#       axis.ticks.y = ggplot2::element_line(color = "black", linewidth = 0.5),
-#       axis.ticks.length = ggplot2::unit(0.2, "cm"),
-#       axis.ticks.x = ggplot2::element_blank(),
-#       axis.text.y = ggplot2::element_text(margin = ggplot2::margin(r = 5)),
-#       plot.margin = ggplot2::margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm")
-#     )
-#
-#   pdf_file <- gsub(".xlsx", ".pdf", outfile)
-#   grDevices::pdf(file = pdf_file, width = 4, height = 1.5)
-#   print(p4)
-#   grDevices::dev.off()
-#
-#   invisible(NULL)
-# }
+  c(strong_alt, strong_ref, weak_alt, weak_ref)
+}
+
+#' Add Allele Balance Features to DataFrame
+#'
+#' 为包含AD_MUT和AD_WT列的数据框添加等位基因平衡特征列。将为每个样本生成四个特征列，
+#' 结果数据框新增8列（MUT_* 和 WT_* 各4列）。
+#'
+#' @param df 输入数据框，必须包含字符型列 AD_MUT 和 AD_WT
+#' @param b 整数，定义"强优势"的阈值倍数（默认=9）
+#'
+#' @return 返回添加了8个新列的数据框，列名格式为：
+#' \itemize{
+#'   \item \code{MUT_strong_alt}, \code{MUT_strong_ref}, \code{MUT_weak_alt}, \code{MUT_weak_ref}
+#'   \item \code{WT_strong_alt}, \code{WT_strong_ref}, \code{WT_weak_alt}, \code{WT_weak_ref}
+#' }
+#'
+#' @examples
+#' # 创建示例数据框
+#' test_df <- data.frame(
+#'   ID = c("snp1", "snp2"),
+#'   AD_MUT = c("10,90", "50,5"),
+#'   AD_WT = c("15,10", "10,10")
+#' )
+#'
+#' # 添加特征列
+#' add_allele_features(test_df)
+add_allele_features <- function(df, b = 9) {
+  mut_features <- t(sapply(df$AD_MUT, extract_sample_features, b = b))
+  colnames(mut_features) <- c("MUT_strong_alt", "MUT_strong_ref", "MUT_weak_alt", "MUT_weak_ref")
+
+  wt_features <- t(sapply(df$AD_WT, extract_sample_features, b = b))
+  colnames(wt_features) <- c("WT_strong_alt", "WT_strong_ref", "WT_weak_alt", "WT_weak_ref")
+
+  cbind(df, mut_features, wt_features)
+}
