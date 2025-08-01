@@ -20,8 +20,8 @@ variant identification.
 Install the development version from GitHub:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("ZHUHJ2023/BSAPipeR")
+install.packages('vcfR')
+install.packages("BSAPipeR_0.0.0.9000.tar.gz",dependencies = T)
 ```
 
 ## Complete BSA Pipeline
