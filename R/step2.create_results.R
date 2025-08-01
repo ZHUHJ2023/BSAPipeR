@@ -415,7 +415,7 @@ get_results_ck <- function(vcffile, outdir, sample_wt, sample_mut, GT_mut, mindp
 #' @importFrom dplyr select filter bind_cols %>% mutate if_else
 #' @importFrom data.table fread
 #' @importFrom openxlsx createWorkbook addWorksheet writeData saveWorkbook read.xlsx
-#' @importFrom ggplot2 ggplot aes geom_point facet_grid scale_color_gradientn labs
+#' @importFrom ggplot2 ggplot aes geom_point geom_hline facet_grid scale_color_gradientn labs
 #' @importFrom ggplot2 theme_bw theme element_blank element_line element_text unit margin
 #' @importFrom workflowsets extract_workflow
 #' @importFrom stats predict na.omit
@@ -482,16 +482,20 @@ get_results_ml <- function(vcffile, outdir, sample_wt, sample_mut, GT_mut,mindp=
   df$GT_WT <- gsub("/","|",df$GT_WT)
   gxdata <- df
   if ( "mutation_effect_level" %in% colnames(gxdata) ) {
-    gxdata$mutation_effect_level <- factor(gxdata$mutation_effect_level,levels=c("HIGH","MODERATE","MODIFIER","LOW"))
+    gxdata$mutation_effect_level <- factor(gxdata$mutation_effect_level,levels=c("HIGH","MODERATE","MODIFIER","LOW")) %>% as.integer()
   }
-  gxdata$GT_MUT <- factor(gxdata$GT_MUT, levels = c("1|1", "0|1", "0|0"))
-  gxdata$GT_WT <- factor(gxdata$GT_WT, levels = c("0|0", "0|1", "1|1"))
-  gxdata$Pr_change_is <- ifelse(gxdata$Pr_change_is %in% "1", "TRUE", "FALSE")
-  gxdata$Pr_change_is <- factor(gxdata$Pr_change_is,levels=c("TRUE","FALSE"))
-  gxdata$EMS_is <- ifelse(gxdata$EMS_is %in% "1", "TRUE", "FALSE")
-  gxdata$EMS_is <- factor(gxdata$EMS_is,levels=c("TRUE","FALSE"))
+  gxdata$GT_MUT <- factor(gxdata$GT_MUT, levels = c("1|1", "0|1", "0|0")) %>% as.integer()
+  gxdata$GT_WT <- factor(gxdata$GT_WT, levels = c("0|0", "0|1", "1|1")) %>% as.integer()
+  gxdata$Pr_change_is[gxdata$mutation_effect %in% "synonymous_variant"] <- "0"
+  gxdata$Pr_change_is <- as.integer(gxdata$Pr_change_is)
   gxdata <- add_allele_features(gxdata) %>%
     dplyr::select(-c(MUT_weak_alt, MUT_weak_ref,WT_weak_alt, WT_weak_ref,MUT_strong_ref,WT_strong_alt))
+  cols_to_numeric <- c("EMS_is", "Pr_change_is", "DP_MUT", "DP_WT", "SNP_count_2Mb",
+                       "GT_MUT", "GT_WT", "PL_MUT", "PL_WT", "FILTER",
+                       "mutation_effect_level", "MUT_strong_alt", "MUT_strong_ref",
+                       "MUT_weak_alt", "MUT_weak_ref", "WT_strong_alt", "WT_strong_ref",
+                       "WT_weak_alt", "WT_weak_ref")
+  gxdata <- gxdata %>% mutate(across(any_of(cols_to_numeric), as.numeric))
   # Load model
   if (is.null(model_path)) {
     model_file <- system.file("extdata", "final.RandomForest_fit.rds",
@@ -541,7 +545,7 @@ get_results_ml <- function(vcffile, outdir, sample_wt, sample_mut, GT_mut,mindp=
     facet_grid(~CHROM, scales = "free_x", space = "free_x", switch = "x") +
     scale_color_gradientn(colours = c( "#f9d423","#f83600" , "#020f75")) +
     # scale_fill_gradientn(colours = c( '#007adf','#fbed96','#ff5858')) +
-    labs(title = sheetname, x = "", y = "pred_TRUE") +
+    labs(title = "RandomForest", x = "", y = "Probability") +
     theme_bw() +
     theme(
       text = element_text(size = 8, color = "black"),

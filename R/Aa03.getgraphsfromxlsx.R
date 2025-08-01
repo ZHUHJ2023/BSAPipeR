@@ -54,22 +54,25 @@ get_graphs <- function(file,outdir,sample_mut) {
   dx <- d[, c("ID", "CHROM", "POS", "SNP_index_MUT", "Mean_SNP-index", "N0.8", "N0.9", "N0.95")]
 
   # pdf(file=gsub(".xlsx",".CMplot.pdf",file),width = 10,height = 3)
-  outfile=paste0(outdir,"/Aa.",gsub(".VQSR.snpEff.xlsx",".CMplot.png",basename(file)))
+  outfile=paste0(outdir,"/",gsub("Gene.xlsx",".CMplot.png",basename(file)))
+  # cmfile=system.file("scripts", "CMplot.r",
+  #             package = "BSAPipeR")
+  # source(cmfile)
   png(filename = outfile, width = 1000, height = 1000)
-  par(ps = 10, mar = c(3, 4, 1, 0.5), mgp = c(1, 0.5, 0), mfcol = c(5, 1), cex = 2)
+  par(ps = 10, mar = c(2, 2, 2, 2), mgp = c(1, 1, 0), mfcol = c(5, 1), cex = 2)
   CMplot(dx,
-    LOG10 = F, plot.type = "m", chr.labels = paste("Chr", c(1:10), sep = ""), r = 0.4, cir.axis = TRUE,
-    outward = FALSE, cir.axis.col = "black", cir.chr.h = 1.3, chr.den.col = "black", file = "jpg",
-    file.name = "", dpi = 300, file.output = F, verbose = TRUE, width = 10, height = 3
+    LOG10 = F, plot.type = "m", cex= 0.5,chr.labels = c(1:10), r = 0.2, cir.axis = TRUE,
+    outward = FALSE, cir.axis.col = "black", cir.chr.h = 1.3, chr.den.col = "black", #file = "jpg",
+    file.name = NULL, dpi = 300, file.output = F, verbose = TRUE#, width = 10, height = 3
   )
   dev.off()
-  outfile=paste0(outdir,"/Aa.",gsub(".VQSR.snpEff.xlsx",".CMplot.pdf",basename(file)))
-  pdf(file = outfile, width = 10, height = 10)
-  par(ps = 10, mar = c(3, 4, 1, 0.5), mgp = c(1, 0.5, 0), mfcol = c(5, 1), cex = 2)
+  outfile=paste0(outdir,"/",gsub("Gene.xlsx",".CMplot.pdf",basename(file)))
+  pdf(file = outfile, width = 15, height = 15)
+  par(ps = 10, mar = c(2, 2, 2, 2), mgp = c(1, 1, 0), mfcol = c(5, 1), cex = 2)
   CMplot(dx,
-    LOG10 = F, plot.type = "m", chr.labels = paste("Chr", c(1:10), sep = ""), r = 0.4, cir.axis = TRUE,
+    LOG10 = F, plot.type = "m", cex= 0.5, chr.labels = c(1:10), r = 0.2, cir.axis = TRUE,
     outward = FALSE, cir.axis.col = "black", cir.chr.h = 1.3, chr.den.col = "black", file = "jpg",
-    file.name = "", dpi = 300, file.output = F, verbose = TRUE, width = 10, height = 3
+    file.name = NULL, dpi = 300, file.output = F, verbose = TRUE#, width = 10, height = 3
   )
   dev.off()
 }
