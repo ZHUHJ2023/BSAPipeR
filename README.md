@@ -10,9 +10,10 @@ BSAPipeR is an integrated R package for Bulked Segregant Analysis (BSA)
 that provides a complete workflow from raw sequencing data to candidate
 variant identification.
 
-
-![BSAPipeR](man/figures/README-BSAPipeR.jpg)
-
+<figure>
+<img src="man/figures/README-BSAPipeR.jpg" alt="BSAPipeR" />
+<figcaption aria-hidden="true">BSAPipeR</figcaption>
+</figure>
 
 ## Installation
 
@@ -137,6 +138,11 @@ The package implements a comprehensive BSA analysis workflow:
         └── 03_ML_results/        # Machine learning outputs
             ├── Predict_RandomForest.xlsx  # Full prediction results
             └── Predict_RandomForest.pdf   # Prediction visualization
+
+## test data
+
+You can test the pipeline with the provided example data:
+<https://pan.baidu.com/s/1iXKz1ffkRD6e_vSRvzTZHA> 提取码: jccn
 
 ## Getting Help
 
