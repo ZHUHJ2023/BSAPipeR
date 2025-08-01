@@ -802,6 +802,7 @@ get_vcf_features <- function(vcffile, sample_wt, sample_mut) {
 #' extract_sample_features("10,15")  # c(0, 0, 1, 0)
 #' extract_sample_features("15,10")  # c(0, 0, 0, 1)
 #' extract_sample_features("10,10")  # c(0, 0, 0, 0)
+#' @export
 extract_sample_features <- function(ad_str, b = 9) {
   # \itemize{
   #   \item \strong{strong_alt}: 变异等位基因深度 ≥ b * 参考等位基因深度
@@ -845,6 +846,7 @@ extract_sample_features <- function(ad_str, b = 9) {
 #'
 #' # 添加特征列
 #' add_allele_features(test_df)
+#' @export
 add_allele_features <- function(df, b = 9) {
   mut_features <- t(sapply(df$AD_MUT, extract_sample_features, b = b))
   colnames(mut_features) <- c("MUT_strong_alt", "MUT_strong_ref", "MUT_weak_alt", "MUT_weak_ref")

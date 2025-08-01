@@ -2,7 +2,9 @@
 
 export("%>%")
 export(BSAPipeR)
+export(add_allele_features)
 export(create_results)
+export(extract_sample_features)
 export(get_graphs)
 export(get_results_ck)
 export(get_results_ml)
