@@ -165,7 +165,3 @@ Please cite this work as:
 ## License
 
 GPL-3 © \[Your Name\]
-
-``` r
-rmarkdown::render("README.Rmd", output_format = "github_document")
-```
