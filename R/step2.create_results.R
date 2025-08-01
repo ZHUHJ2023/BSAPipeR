@@ -795,12 +795,6 @@ get_vcf_features <- function(vcffile, sample_wt, sample_mut) {
 #' @param b 整数，定义"强优势"的阈值倍数（默认=9）
 #'
 #' @return 返回长度为4的整数向量，包含以下特征：
-#' \itemize{
-#'   \item \strong{strong_alt}: 变异等位基因深度 ≥ b * 参考等位基因深度
-#'   \item \strong{strong_ref}: 参考等位基因深度 ≥ b * 变异等位基因深度
-#'   \item \weak_alt}: 变异等位基因深度 > 参考等位基因深度 且 < b倍参考深度
-#'   \item \weak_ref}: 参考等位基因深度 > 变异等位基因深度 且 < b倍变异深度
-#' }
 #'
 #' @examples
 #' extract_sample_features("10,90")  # c(1, 0, 0, 0)
@@ -809,6 +803,12 @@ get_vcf_features <- function(vcffile, sample_wt, sample_mut) {
 #' extract_sample_features("15,10")  # c(0, 0, 0, 1)
 #' extract_sample_features("10,10")  # c(0, 0, 0, 0)
 extract_sample_features <- function(ad_str, b = 9) {
+  # \itemize{
+  #   \item \strong{strong_alt}: 变异等位基因深度 ≥ b * 参考等位基因深度
+  #   \item \strong{strong_ref}: 参考等位基因深度 ≥ b * 变异等位基因深度
+  #   \item \{weak_alt}: 变异等位基因深度 > 参考等位基因深度 且 < b倍参考深度
+  #   \item \{weak_ref}: 参考等位基因深度 > 变异等位基因深度 且 < b倍变异深度
+  # }
   depths <- as.numeric(strsplit(ad_str, ",")[[1]])
   ref_depth <- depths[1]
   alt_depth <- depths[2]

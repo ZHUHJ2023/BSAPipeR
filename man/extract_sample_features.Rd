@@ -13,12 +13,6 @@ extract_sample_features(ad_str, b = 9)
 }
 \value{
 返回长度为4的整数向量，包含以下特征：
-\itemize{
-\item \strong{strong_alt}: 变异等位基因深度 ≥ b * 参考等位基因深度
-\item \strong{strong_ref}: 参考等位基因深度 ≥ b * 变异等位基因深度
-\item \weak_alt}: 变异等位基因深度 > 参考等位基因深度 且 < b倍参考深度
-\item \weak_ref}: 参考等位基因深度 > 变异等位基因深度 且 < b倍变异深度
-}
 }
 \description{
 从AD格式字符串（"ref_depth,alt_depth"）中提取四个等位基因平衡特征：
