@@ -1,0 +1,17 @@
+BSAPipeR                Bulked Segregant Analysis (BSA) Pipeline
+add_allele_features     Add Allele Balance Features to DataFrame
+create_results          Title
+extract_sample_features
+                        Extract Allele Balance Features from AD String
+get_graphs              Title plot
+get_results_ck          Process VCF File for SNP Analysis
+get_results_ml          Process VCF File Using Machine Learning Model
+get_software_paths      Get currently configured software paths
+get_table               Title get_table
+get_table_from_html     Extract Tables from HTML File and Save to Excel
+get_txt                 Title
+get_vcf_features        Extract and Annotate Variant Features from VCF
+                        File
+pddepth                 Title
+run_vcf_processing      run_vcf_processing
+set_software_paths      Set or get software paths for BSA analysis

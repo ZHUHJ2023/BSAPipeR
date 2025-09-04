@@ -1,0 +1,16 @@
+%>%	pipe
+add_allele_features	add_allele_features
+BSAPipeR	BSAPipeR
+create_results	create_results
+extract_sample_features	extract_sample_features
+get_graphs	get_graphs
+get_results_ck	get_results_ck
+get_results_ml	get_results_ml
+get_software_paths	get_software_paths
+get_table	get_table
+get_table_from_html	get_table_from_html
+get_txt	get_txt
+get_vcf_features	get_vcf_features
+pddepth	pddepth
+run_vcf_processing	run_vcf_processing
+set_software_paths	set_software_paths
