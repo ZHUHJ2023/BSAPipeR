@@ -20,8 +20,8 @@ variant identification.
 Install the development version from GitHub:
 
 ``` r
-install.packages('vcfR')
-install.packages("BSAPipeR_0.0.0.9000.tar.gz",dependencies = T)
+# install.packages("devtools")
+devtools::install_github("ZHUHJ2023/BSAPipeR")
 ```
 
 ## Complete BSA Pipeline
@@ -132,7 +132,7 @@ The package implements a comprehensive BSA analysis workflow:
         │   └── *.snpEff.xlsx     # Extracted annotation tables
         │
         ├── 02_BSA_results/       # BSA-specific analysis outputs
-        │   ├── *.CandidateGene.txt       # Candidate variants
+        │   ├── *.CandidateGene.xlsx       # Candidate variants
         │   └── *.SNP_index.pdf          # Visualization of SNP index
         │
         └── 03_ML_results/        # Machine learning outputs
@@ -165,3 +165,7 @@ Please cite this work as:
 ## License
 
 GPL-3 © \[Your Name\]
+
+``` r
+rmarkdown::render("README.Rmd", output_format = "github_document")
+```
