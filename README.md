@@ -11,7 +11,7 @@ that provides a complete workflow from raw sequencing data to candidate
 variant identification.
 
 <figure>
-<img src="man/figures/README-BSAPipeR.jpg" alt="BSAPipeR" />
+<img src="man/figures/README-BSAPipeR.jpg " alt="BSAPipeR" />
 <figcaption aria-hidden="true">BSAPipeR</figcaption>
 </figure>
 
