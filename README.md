@@ -20,8 +20,8 @@ variant identification.
 Install the development version from GitHub:
 
 ``` r
-install.packages('vcfR')
-install.packages("BSAPipeR_0.0.0.9000.tar.gz",dependencies = T)
+ install.packages(c('data.table', 'doParallel', 'dplyr', 'foreach', 'tidyr', 'vcfR', 'CMplot', 'XML', 'furrr', 'future', 'ggplot2', 'magrittr', 'openxlsx', 'purrr', 'workflowsets'))
+ install.packages("BSAPipeR_0.1.0.tar.gz",dependencies=T)
 ```
 
 ## Complete BSA Pipeline
