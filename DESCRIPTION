@@ -17,4 +17,4 @@ LazyData: false
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Suggests: knitr, rmarkdown
-Built: R 4.4.2; ; 2025-11-01 01:20:01 UTC; windows
+Built: R 4.4.2; ; 2025-11-01 01:45:00 UTC; windows
