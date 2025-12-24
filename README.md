@@ -76,16 +76,15 @@ BSAPipeR(
 1. for fastq data
 ``` bash
 # Download the bsapipe.r file
-
 # create a software_paths.config file
 echo "bwa = '/path/to/bwa'
 fastp = '/path/to/fastp'
 samtools = '/path/to/samtools'
 picard = '/path/to/java -XX:ParallelGCThreads=8 -Xmx30g -jar /path/to/picard.jar'
 bcftools = '/path/to/bcftools'
-gatk = '/path/to/java -XX:ParallelGCThreads=8 -Xmx30g -jar /path/to/gatk.jar', # gatk-4.4.0.0
-snpEff = '/path/to/snpEff', #SnpEff directory, SnpEff-4.3t 
-java = '/path/to/java', # jdk-18.0.2.1
+gatk = '/path/to/java -XX:ParallelGCThreads=8 -Xmx30g -jar /path/to/gatk.jar'
+snpEff = '/path/to/snpEff'
+java = '/path/to/java'
 pandepth = '/path/to/pandepth' " > software_paths.config
 # Run BSAPipeR
 Rscript bsapipe.r --input_type=fastq --ref=/path/to/reference.fa --refbwa=/path/to/bwa_index_prefix --mutfq1=mutant_R1.fq.gz --mutfq2=mutant_R2.fq.gz --wtfq1=wildtype_R1.fq.gz --wtfq2=wildtype_R2.fq.gz --gff3=/path/to/annotation.gff3 --outdir=results --sample_mut=mutant --sample_wt=wildtype --GT_mut=aa --mindp=4 --config=software_paths.config
