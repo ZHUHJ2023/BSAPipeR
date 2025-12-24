@@ -23,7 +23,7 @@ Install the development version from GitHub:
  # Install required packages
  install.packages(c('optparse', 'data.table', 'doParallel', 'dplyr', 'foreach', 'tidyr', 'vcfR', 'CMplot', 'XML', 'furrr', 'future', 'ggplot2', 'magrittr', 'openxlsx', 'purrr', 'workflowsets'))
  # Install BSAPipeR from GitHub
- wget https://github.com/ZHUHJ2023/BSAPipeR/blob/main/BSAPipeR_0.1.0.tar.gz
+ https://github.com/ZHUHJ2023/BSAPipeR/blob/main/src/BSAPipeR_0.1.0.tar.gz
  # Install the package
  install.packages("BSAPipeR_0.1.0.tar.gz",dependencies=T)
 ```
