@@ -7,8 +7,16 @@
 pddepth(depthFT, mdepth)
 }
 \arguments{
-\item{mdepth}{}
+\item{depthFT}{Whether to enable depth filtering (default "False"), use "True" to enable}
+
+\item{mdepth}{specified sequencing depth threshold (default 0, specify non-zero value), effective when depthFT="True"}
+}
+\value{
+depth threshold value
 }
 \description{
 Title
+}
+\examples{
+pddepth("True", 10)
 }

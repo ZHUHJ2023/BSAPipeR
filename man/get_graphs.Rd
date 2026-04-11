@@ -7,7 +7,11 @@
 get_graphs(file, outdir, sample_mut)
 }
 \arguments{
-\item{file}{get_table得到的xlsx文件路径}
+\item{file}{input xlsx file(from get_table function)}
+
+\item{outdir}{output directory}
+
+\item{sample_mut}{mutant sample name}
 }
 \value{
 null

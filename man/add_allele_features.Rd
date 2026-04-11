@@ -7,20 +7,20 @@
 add_allele_features(df, b = 9)
 }
 \arguments{
-\item{df}{输入数据框，必须包含字符型列 AD_MUT 和 AD_WT}
+\item{df}{input data frame must contain the character columns AD_MUT and AD_WT}
 
-\item{b}{整数，定义"强优势"的阈值倍数（默认=9）}
+\item{b}{integer, defining the threshold multiple of "strong advantage" (default =9)}
 }
 \value{
-返回添加了8个新列的数据框，列名格式为：
+returns the data frame with 8 new columns added, and the column name format is:
 \itemize{
-\item \code{MUT_strong_alt}, \code{MUT_strong_ref}, \code{MUT_weak_alt}, \code{MUT_weak_ref}
-\item \code{WT_strong_alt}, \code{WT_strong_ref}, \code{WT_weak_alt}, \code{WT_weak_ref}
+  \item \code{MUT_strong_alt}, \code{MUT_strong_ref}, \code{MUT_weak_alt}, \code{MUT_weak_ref}
+  \item \code{WT_strong_alt}, \code{WT_strong_ref}, \code{WT_weak_alt}, \code{WT_weak_ref}
 }
 }
 \description{
-为包含AD_MUT和AD_WT列的数据框添加等位基因平衡特征列。将为每个样本生成四个特征列，
-结果数据框新增8列（MUT_* 和 WT_* 各4列）。
+Add allelic balance feature columns to data frames containing AD_MUT and AD_WT columns. Four feature columns will be generated for each sample
+The result data frame has added 8 columns (4 columns each for MUT_* and WT_*).
 }
 \examples{
 # 创建示例数据框

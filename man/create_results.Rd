@@ -15,8 +15,26 @@ create_results(
 )
 }
 \arguments{
-\item{GT_mut}{}
+\item{outdir}{outdir}
+
+\item{sample_mut}{mutant sample}
+
+\item{sample_wt}{wild type sample}
+
+\item{depthFT}{Whether to enable depth filtering (default "False"), use "True" to enable}
+
+\item{mdepth}{specified sequencing depth threshold (default 0, specify non-zero value), effective when depthFT="True"}
+
+\item{GT_mut}{mutant genotype}
+
+\item{mindp}{Minimum depth threshold (default 4) for filtering variant sites}
+}
+\value{
+No direct return value. Result files will be written to `outdir` directory, including:
 }
 \description{
 Title
+}
+\examples{
+create_results("/path/to/outdir", "MUT_sample", "WT_sample", depthFT = "False", GT_mut = "aa", mindp = 4)
 }

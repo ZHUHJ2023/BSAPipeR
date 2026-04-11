@@ -16,6 +16,8 @@ get_results_ck(vcffile, outdir, sample_wt, sample_mut, GT_mut, mindp = 4)
 \item{sample_mut}{Name of the mutant sample in VCF}
 
 \item{GT_mut}{Genotype of mutant, either "aa" (homozygous) or "Aa" (heterozygous)}
+
+\item{mindp}{Minimum depth threshold (default 4) for filtering variant sites}
 }
 \value{
 Invisibly returns NULL. Outputs are saved to files in the specified directory.

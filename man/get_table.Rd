@@ -15,15 +15,19 @@ get_table(
 )
 }
 \arguments{
-\item{file}{get_txt得到的txt文件路径}
+\item{file}{txt file path(from get_txt function)}
 
-\item{chrlist}{需要提取的染色体列表}
+\item{chrlist}{chromosome list}
 
-\item{mindp}{最低测序深度，默认4}
+\item{mindp}{Minimum depth for filtering (default: 4)}
 
-\item{minSNPindexmut}{最低SNPindex-M，默认0.3}
+\item{minSNPindexmut}{minimum SNPindex-M (default:0.3)}
 
-\item{maxSNPindexmut}{最高SNPindex-M，默认0.7}
+\item{maxSNPindexmut}{maximum SNPindex-M (default:0.7)}
+
+\item{outdir}{output directory}
+
+\item{M}{mutant sample name}
 }
 \value{
 Null

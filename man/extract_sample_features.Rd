@@ -7,16 +7,22 @@
 extract_sample_features(ad_str, b = 9)
 }
 \arguments{
-\item{ad_str}{字符串，AD格式的等位基因深度（"ref_depth,alt_depth"）}
+\item{ad_str}{string, allele depth in AD format ("ref_depth,alt_depth")}
 
-\item{b}{整数，定义"强优势"的阈值倍数（默认=9）}
+\item{b}{integer, defining the threshold multiple of "strong advantage" (default =9)}
 }
 \value{
-返回长度为4的整数向量，包含以下特征：
+returns an integer vector of length 4, which contains the following features:
+\itemize{
+\item \code{strong_alt}: Depth of variant allele ≥ b * depth of reference allele
+\item \code{strong_ref}: Reference allele depth ≥ b * variant allele depth
+\item \code{weak_alt}: The depth of the variant allele is greater than that of the reference allele and less than b times the reference depth
+\item \code{weak_ref}: The depth of the reference allele is greater than that of the variant allele and less than b times the variant depth
+}
 }
 \description{
-从AD格式字符串（"ref_depth,alt_depth"）中提取四个等位基因平衡特征：
-强变异优势、强参考优势、弱变异优势、弱参考优势。
+Extract four allelic balance features from the AD format string ("ref_depth,alt_depth") :
+Strong variation advantage, strong reference advantage, weak variation advantage, weak reference advantage.
 }
 \examples{
 extract_sample_features("10,90")  # c(1, 0, 0, 0)

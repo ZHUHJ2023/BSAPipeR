@@ -20,11 +20,37 @@ run_vcf_processing(
 )
 }
 \arguments{
-\item{mdepth}{}
+\item{ref}{Path to reference genome FASTA file}
+
+\item{refbwa}{Path to BWA-indexed reference genome (same as `ref`). If no index exists,
+it will be created automatically. If pre-built index exists, specify the path: path/ref.fa}
+
+\item{outdir}{Path to main output directory}
+
+\item{sample_mut}{Mutant sample name (for result identification)}
+
+\item{sample_wt}{Wild-type sample name (for result identification)}
+
+\item{GFF3}{Path to genome annotation file (GFF3 format)}
+
+\item{mutfq1}{Path to mutant sample FASTQ file (read 1)}
+
+\item{mutfq2}{Path to mutant sample FASTQ file (read 2)}
+
+\item{wtfq1}{Path to wild-type sample FASTQ file (read 1)}
+
+\item{wtfq2}{Path to wild-type sample FASTQ file (read 2)}
+
+\item{depthFT}{Whether to enable depth filtering (default "False"), use "True" to enable}
+
+\item{mdepth}{specified sequencing depth threshold (default 0, specify non-zero value), effective when depthFT="True"}
+}
+\value{
+No direct return value. Result files will be written to `outdir` directory, including:
 }
 \description{
 run_vcf_processing
 }
 \examples{
-set_software_paths(bwa = "/path/to/bwa",fastp = "/path/to/fastp",samtools = "/path/to/samtools",picard = "/path/to/picard.jar",bcftools = "/path/to/bcftools",gatk = "/path/to/gatk.jar",snpEff = "/path/to/snpEff") run_vcf_processing(ref = "/path/to/reference.fa",refbwa = "/path/to/bwa_index_prefix",workdir = "/path/to/workdir",sample_mut = "MUT",sample_wt = "WT",mutfq1 = "/path/to/mut_1.fq.gz",mutfq2 = "/path/to/mut_2.fq.gz",wtfq1 = "/path/to/wt_1.fq.gz",wtfq2 = "/path/to/wt_2.fq.gz")
+run_vcf_processing(ref = "/path/to/reference.fa",refbwa = "/path/to/bwa_index_prefix",workdir = "/path/to/workdir",sample_mut = "MUT",sample_wt = "WT",mutfq1 = "/path/to/mut_1.fq.gz",mutfq2 = "/path/to/mut_2.fq.gz",wtfq1 = "/path/to/wt_1.fq.gz",wtfq2 = "/path/to/wt_2.fq.gz")
 }

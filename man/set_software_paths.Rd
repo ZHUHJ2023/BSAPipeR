@@ -41,3 +41,7 @@ A list of software paths (invisibly)
 \description{
 Set or get software paths for BSA analysis
 }
+\examples{
+set_software_paths(bwa = "/path/to/bwa",fastp = "/path/to/fastp",samtools = "/path/to/samtools",picard = "/path/to/picard.jar",bcftools = "/path/to/bcftools",gatk = "/path/to/gatk.jar",snpEff = "/path/to/snpEff")
+
+}

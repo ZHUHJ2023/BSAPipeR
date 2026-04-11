@@ -25,6 +25,8 @@ get_results_ml(
 
 \item{GT_mut}{Genotype of mutant ("aa" only, currently supported)}
 
+\item{mindp}{Minimum depth threshold (default 4) for filtering variant sites}
+
 \item{model_path}{Optional path to custom model file (default: uses built-in model)}
 }
 \value{

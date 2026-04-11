@@ -22,47 +22,69 @@ BSAPipeR(
 )
 }
 \arguments{
-\item{ref}{参考基因组 FASTA 文件路径}
+\item{ref}{Path to reference genome FASTA file}
 
-\item{refbwa}{BWA 索引参考基因组路径(与 \code{ref} 相同,如果没有创建索引会自动创建，如果有建好的索引可以直接写建好索引的路径：path/ref.fa)}
+\item{refbwa}{Path to BWA-indexed reference genome (same as `ref`). If no index exists,
+it will be created automatically. If pre-built index exists, specify the path: path/ref.fa}
 
-\item{outdir}{输出结果的主目录路径}
+\item{outdir}{Path to main output directory}
 
-\item{sample_mut}{突变型样本名称(用于结果标识)}
+\item{sample_mut}{Mutant sample name (for result identification)}
 
-\item{sample_wt}{野生型样本名称(用于结果标识)}
+\item{sample_wt}{Wild-type sample name (for result identification)}
 
-\item{GFF3}{基因组注释文件 (GFF3格式) 路径}
+\item{GFF3}{Path to genome annotation file (GFF3 format)}
 
-\item{mutfq1}{突变样本的 FASTQ 文件路径(read 1)}
+\item{mutfq1}{Path to mutant sample FASTQ file (read 1)}
 
-\item{mutfq2}{突变样本的 FASTQ 文件路径(read 2)}
+\item{mutfq2}{Path to mutant sample FASTQ file (read 2)}
 
-\item{wtfq1}{野生型样本的 FASTQ 文件路径(read 1)}
+\item{wtfq1}{Path to wild-type sample FASTQ file (read 1)}
 
-\item{wtfq2}{野生型样本的 FASTQ 文件路径(read 2)}
+\item{wtfq2}{Path to wild-type sample FASTQ file (read 2)}
 
-\item{depthFT}{是否启用深度过滤(默认 "False")，可选 "True" 启用}
+\item{depthFT}{Whether to enable depth filtering (default "False"), use "True" to enable}
 
-\item{mdepth}{最小深度阈值(默认 0，需指定不为0的值)，当 depthFT="True" 时生效}
+\item{mdepth}{specified sequencing depth threshold (default 0, specify non-zero value), effective when depthFT="True"}
 
-\item{GT_mut}{目标突变基因型(默认 "aa")，如 "aa" (纯合突变), "Aa" (杂合)}
+\item{GT_mut}{Target mutant genotype (default "aa"), e.g., "aa" (homozygous mutant), "Aa" (heterozygous)}
 
-\item{mindp}{最小深度阈值(默认 4)，用于过滤变异位点}
+\item{mindp}{Minimum depth threshold (default 4) for filtering variant sites}
 }
 \value{
-无直接返回值。结果文件将写入 \code{outdir} 目录，包括：
-\itemize{
-\item rawdata/: 原始 FASTQ 链接文件
-\item Processing/: 中间比对文件以及VCF结果
-\item Results/: 最终结果
-}
+No direct return value. Result files will be written to `outdir` directory, including:
+* rawdata/: Symbolic links to raw FASTQ files
+* Processing/: Intermediate alignment files and VCF results
+* Results/: Final analysis results
 }
 \description{
-该函数实现完整的 BSA 分析流程，包括原始数据管理、变异检测和结果生成。
-主要步骤：1) 创建原始数据链接文件 2) 运行变异检测流程 3) 生成结果。
+Complete BSA analysis pipeline including raw data management, variant detection and result generation
+}
+\details{
+This function implements a complete Bulked Segregant Analysis workflow with three main steps:
+1) Create raw data symbolic links 2) Run variant calling pipeline 3) Generate final results
 }
 \examples{
+\dontrun{
+# Example usage:
+create_results(
+  ref = "path/to/reference.fa",
+  refbwa = "path/to/reference.fa",
+  outdir = "BSA_analysis",
+  sample_mut = "mutant",
+  sample_wt = "wildtype",
+  GFF3 = "path/to/annotation.gff3",
+  mutfq1 = "path/to/mut_R1.fastq.gz",
+  mutfq2 = "path/to/mut_R2.fastq.gz",
+  wtfq1 = "path/to/wt_R1.fastq.gz",
+  wtfq2 = "path/to/wt_R2.fastq.gz",
+  depthFT = "False",
+  mdepth = 0,
+  GT_mut = "aa",
+  mindp = 4
+)
+}
+
 \dontrun{
 BSAPipeR(
   ref = "ref_genome.fasta",
